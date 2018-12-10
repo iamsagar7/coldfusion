@@ -4,8 +4,9 @@ var path = require('path');
 var bodyParser = require('body-parser')
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-var config = require('./config/index')
+var config = require('./config/index');
 var mongoose = require('mongoose');
+var methodOverride = require('method-override');
 
 //importing routes
 var aboutRouter = require('./routes/about');
@@ -26,16 +27,18 @@ app.engine('handlebars', exphbs({
   defaultLayout: 'layout'
 }));
 app.set('view engine', 'handlebars')
-app.use(bodyParser.json())
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: false
 }));
+// override with POST having ?_method=DELETE
+app.use(methodOverride('_method'));
 
 // Index Route
 app.use('/', indexRouter);
-
 // About Route
-app.use('/about',aboutRouter);
+app.use('/about', aboutRouter);
+
 
 
 // Idea Index Page
@@ -49,6 +52,7 @@ app.get('/ideas', (req, res) => {
         ideas: ideas
       });
     });
+
 });
 
 // Add Idea Form
@@ -56,6 +60,48 @@ app.get('/ideas/add', (req, res) => {
   res.render('ideas/add');
 });
 
+// render to edit ideas template
+app.get('/ideas/edit/:id', (req, res, next) => {
+  Idea.findOne({
+      _id: req.params.id
+    })
+    .then(idea => {
+      res.render('ideas/edit', {
+        idea: idea
+      });
+    });
+
+
+
+});
+//edit Ideas
+app.put('/ideas/:id', (req, res) => {
+  Idea.findOne({
+      _id: req.params.id
+    })
+    .then(idea => {
+      idea.title = req.body.title;
+      idea.details = req.body.details;
+
+      idea.save()
+        .then(idea => {
+          res.redirect('/ideas');
+        });
+
+    });
+
+});
+//Delete ideas
+app.delete('/ideas/:id', (req, res) => {
+  Idea.deleteOne({
+      _id: req.params.id
+    })
+    .then(() => {
+     
+        res.redirect('/ideas');
+    
+    })
+})
 // Process Form
 app.post('/ideas', (req, res) => {
   let errors = [];
@@ -89,13 +135,23 @@ app.post('/ideas', (req, res) => {
       })
   }
 });
+
+//error handler
+app.use(function (err, req, res, next) {
+  var status = err.status || 400;
+  res.status(400).json({
+    message: err.message || err
+  });
+});
+
+
 app.listen(config.app.port, (err, done) => {
   if (err) {
-    console.log(`We got an internal eroor connecting to ${config.app.port}`);
+    console.log(`We got an internal error connecting to port ${config.app.port}`);
   } else {
-    console.log(`Magic happens at port ${config.app.port}`);
+    console.log(`Sucessfully connected at  port  ${config.app.port}`);
   }
 
-})
+});
 
 module.exports = app;
