@@ -1,14 +1,13 @@
 {{#each ideas}}
-<div class="card card-body mb-3 " style="max-width: 30rem; max-height: 50rem">
-    <h1>{{title}}</h1>
-    <P>{{details}}</P>
-   
-        <a href="/ideas/edit/{{id}}" class="btn btn-primary btn-sm mb-2">Edit</a>
+  <div class="card card-body mb-2">
+    <h4>{{title}}</h4>
+    <p>{{details}}</p>
+    <a class="btn btn-dark btn-block mb-2" href="/ideas/edit/{{id}}">Edit</a>
     <form method="post" action="/ideas/{{id}}?_method=DELETE">
-    <input type="hidden" name="_method" value="DELETE">
-    <input type="submit" class="btn btn-danger btn-block" value="Delete">
+      <input type="hidden" name="_method" value="DELETE">
+      <input type="submit" class="btn btn-danger btn-block" value="Delete">
     </form>
-</div>
+  </div>
 {{else}}
-<p1>NO ideas yet</p1>
+  <p>No new ideas listed</p>
 {{/each}}

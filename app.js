@@ -1,141 +1,88 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var bodyParser = require('body-parser')
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-var config = require('./config/index');
-var mongoose = require('mongoose');
-var methodOverride = require('method-override');
+const express = require('express');
+const path = require('path');
+const exphbs = require('express-handlebars');
+const methodOverride = require('method-override');
+const flash = require('connect-flash');
+const session = require('express-session');
+const bodyParser = require('body-parser');
+const passport = require('passport');
+const mongoose = require('mongoose');
+const config=require('./config/index');
+const app = express();
+
 
 //importing routes
 var aboutRouter = require('./routes/about');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var ideasRouter = require('./routes/ideas');
 
-
-//load idea model
-require('./models/Idea');
-var Idea = mongoose.model('ideas');
 
 
 require('./db')(config);
-var app = express();
-var exphbs = require('express-handlebars');
-// view engine setup
+
+require('./models/Idea');
+var Idea = mongoose.model('ideas');
+
+// Passport Config
+require('./config/passport')(passport);
+
+// Handlebars Middleware
 app.engine('handlebars', exphbs({
-  defaultLayout: 'layout'
+  defaultLayout: 'main'
 }));
-app.set('view engine', 'handlebars')
-app.use(bodyParser.json());
+app.set('view engine', 'handlebars');
+
+// Body parser middleware
 app.use(bodyParser.urlencoded({
   extended: false
 }));
-// override with POST having ?_method=DELETE
+app.use(bodyParser.json());
+
+// Static folder
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Method override middleware
 app.use(methodOverride('_method'));
 
-// Index Route
-app.use('/', indexRouter);
-// About Route
+// Express session midleware
+app.use(session({
+  secret: 'secret',
+  resave: true,
+  saveUninitialized: true
+}));
+
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.use(flash());
+
+// Global variables
+app.use(function (req, res, next) {
+  res.locals.success_msg = req.flash('success_msg');
+  res.locals.error_msg = req.flash('error_msg');
+  res.locals.error = req.flash('error');
+  res.locals.user = req.user || null;
+  next();
+});
+
+
+// Use routes
+app.use('/ideas', ideasRouter);
+app.use('/users', usersRouter);
 app.use('/about', aboutRouter);
+app.use('/', indexRouter);
 
 
-
-// Idea Index Page
-app.get('/ideas', (req, res) => {
-  Idea.find({})
-    .sort({
-      date: 'desc'
-    })
-    .then(ideas => {
-      res.render('ideas/index', {
-        ideas: ideas
-      });
-    });
-
+// Global variables
+app.use(function (req, res, next) {
+  res.locals.success_msg = req.flash('success_msg');
+  res.locals.error_msg = req.flash('error_msg');
+  res.locals.error = req.flash('error');
+  res.locals.user = req.user || null;
+  next();
 });
-
-// Add Idea Form
-app.get('/ideas/add', (req, res) => {
-  res.render('ideas/add');
-});
-
-// render to edit ideas template
-app.get('/ideas/edit/:id', (req, res, next) => {
-  Idea.findOne({
-      _id: req.params.id
-    })
-    .then(idea => {
-      res.render('ideas/edit', {
-        idea: idea
-      });
-    });
-
-
-
-});
-//edit Ideas
-app.put('/ideas/:id', (req, res) => {
-  Idea.findOne({
-      _id: req.params.id
-    })
-    .then(idea => {
-      idea.title = req.body.title;
-      idea.details = req.body.details;
-
-      idea.save()
-        .then(idea => {
-          res.redirect('/ideas');
-        });
-
-    });
-
-});
-//Delete ideas
-app.delete('/ideas/:id', (req, res) => {
-  Idea.deleteOne({
-      _id: req.params.id
-    })
-    .then(() => {
-     
-        res.redirect('/ideas');
-    
-    })
-})
-// Process Form
-app.post('/ideas', (req, res) => {
-  let errors = [];
-
-  if (!req.body.title) {
-    errors.push({
-      text: 'Please add a title'
-    });
-  }
-  if (!req.body.details) {
-    errors.push({
-      text: 'Please add some details'
-    });
-  }
-
-  if (errors.length > 0) {
-    res.render('ideas/add', {
-      errors: errors,
-      title: req.body.title,
-      details: req.body.details
-    });
-  } else {
-    const newUser = {
-      title: req.body.title,
-      details: req.body.details
-    }
-    new Idea(newUser)
-      .save()
-      .then(idea => {
-        res.redirect('/ideas');
-      })
-  }
-});
-
 //error handler
 app.use(function (err, req, res, next) {
   var status = err.status || 400;
@@ -143,7 +90,6 @@ app.use(function (err, req, res, next) {
     message: err.message || err
   });
 });
-
 
 app.listen(config.app.port, (err, done) => {
   if (err) {
