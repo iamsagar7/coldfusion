@@ -18,7 +18,6 @@ var usersRouter = require('./routes/users');
 var ideasRouter = require('./routes/ideas');
 
 
-
 require('./db')(config);
 
 require('./models/Idea');
